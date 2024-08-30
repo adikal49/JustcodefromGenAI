@@ -542,3 +542,121 @@ output "partitioned_data" {
 
 These examples showcase the power of Terraform's local values and output transformations, allowing for complex data manipulation and transformation without relying on cloud provider resources. Each example builds on the previous one, demonstrating increasingly sophisticated techniques.
 
+
+
+Absolutely! Let's push the boundaries even further with a more complex example that combines nested loops, advanced Terraform functions, and intricate data transformations. This example will demonstrate how to process a multi-dimensional dataset, apply complex transformations, and generate detailed outputs.
+
+### Example: Multi-Dimensional Data Processing and Transformation
+
+```hcl
+locals {
+  raw_data = {
+    "region1" = {
+      "cluster1" = {
+        nodes = [
+          { id = 1, type = "small", status = "active" },
+          { id = 2, type = "medium", status = "inactive" },
+        ]
+      }
+      "cluster2" = {
+        nodes = [
+          { id = 3, type = "large", status = "active" },
+          { id = 4, type = "small", status = "active" },
+        ]
+      }
+    }
+    "region2" = {
+      "cluster3" = {
+        nodes = [
+          { id = 5, type = "medium", status = "active" },
+          { id = 6, type = "large", status = "inactive" },
+        ]
+      }
+      "cluster4" = {
+        nodes = [
+          { id = 7, type = "small", status = "active" },
+          { id = 8, type = "medium", status = "active" },
+        ]
+      }
+    }
+  }
+
+  active_nodes = flatten([
+    for region, clusters in local.raw_data : [
+      for cluster, details in clusters : [
+        for node in details.nodes : node if node.status == "active"
+      ]
+    ]
+  ])
+
+  node_counts = {
+    for node in local.active_nodes : node.type => coalesce(lookup(local.node_counts, node.type, 0), 0) + 1...
+  }
+
+  node_details = {
+    for node in local.active_nodes : node.id => {
+      type   = node.type
+      status = node.status
+    }
+  }
+
+  region_summary = {
+    for region, clusters in local.raw_data : region => {
+      active_nodes = length([
+        for cluster, details in clusters : [
+          for node in details.nodes : node if node.status == "active"
+        ]
+      ])
+      total_nodes = length(flatten([
+        for cluster, details in clusters : details.nodes
+      ]))
+    }
+  }
+}
+
+output "active_nodes" {
+  value = local.active_nodes
+}
+
+output "node_counts" {
+  value = local.node_counts
+}
+
+output "node_details" {
+  value = local.node_details
+}
+
+output "region_summary" {
+  value = local.region_summary
+}
+```
+
+### Explanation:
+
+1. **Raw Data Structure**:
+   - A multi-dimensional map representing regions, clusters, and nodes.
+   - Each node has an ID, type, and status.
+
+2. **Active Nodes Extraction**:
+   - Uses nested loops to flatten the structure and extract only active nodes.
+   - The `flatten` function is used to merge lists from different levels.
+
+3. **Node Counts by Type**:
+   - Counts the number of active nodes by their type.
+   - Uses the `coalesce` function to handle missing keys and increment counts dynamically.
+
+4. **Node Details**:
+   - Creates a map of node details keyed by node ID.
+   - Filters out inactive nodes.
+
+5. **Region Summary**:
+   - Generates a summary of active and total nodes per region.
+   - Uses nested loops and the `length` function to count nodes.
+
+6. **Outputs**:
+   - `active_nodes`: Lists all active nodes.
+   - `node_counts`: Counts of active nodes by type.
+   - `node_details`: Detailed information about each active node.
+   - `region_summary`: Summary of node counts per region.
+
+This example demonstrates the power of Terraform's local values and functions to process and transform complex, multi-dimensional data structures. It showcases advanced techniques such as nested loops, dynamic counting, and detailed data aggregation, providing a comprehensive view of the data.
